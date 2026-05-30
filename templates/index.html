@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能问答系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            line-height: 1.6;
+        }
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: 20px;
+        }
+        .bot-message {
+            background: white;
+            border: 1px solid #e0e0e0;
+            margin-right: 20px;
+        }
+        .bot-message.no-match {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #667eea;
+        }
+        button {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .admin-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .admin-link a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .match-info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 智能问答系统</h1>
+        <div class="chat-box" id="chatBox">
+            <div class="message bot-message">
+                您好！我是智能问答助手。请输入您的问题，我会尽力为您解答。
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="questionInput" placeholder="请输入您的问题..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendQuestion()" id="sendBtn">发送</button>
+        </div>
+        <div class="admin-link">
+            <a href="/admin">管理后台</a>
+        </div>
+    </div>
+
+    <script>
+        async function sendQuestion() {
+            const input = document.getElementById('questionInput');
+            const btn = document.getElementById('sendBtn');
+            const chatBox = document.getElementById('chatBox');
+            const question = input.value.trim();
+
+            if (!question) return;
+
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user-message';
+            userMsg.textContent = question;
+            chatBox.appendChild(userMsg);
+
+            input.value = '';
+            btn.disabled = true;
+            btn.textContent = '思考中...';
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: question })
+                });
+
+                const data = await response.json();
+                const botMsg = document.createElement('div');
+                botMsg.className = 'message bot-message' + (data.found ? '' : ' no-match');
+                botMsg.innerHTML = data.answer;
+                if (data.found && data.score) {
+                    botMsg.innerHTML += `<div class="match-info">匹配度: ${(data.score * 100).toFixed(1)}%</div>`;
+                }
+                chatBox.appendChild(botMsg);
+            } catch (error) {
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'message bot-message';
+                errorMsg.textContent = '抱歉，服务出现问题，请稍后重试。';
+                chatBox.appendChild(errorMsg);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '发送';
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendQuestion();
+            }
+        }
+    </script>
+</body>
+</html>

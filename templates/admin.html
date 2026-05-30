@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库管理 - 智能问答系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+        .category-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 题库管理</h1>
+            <div>
+                <button class="btn btn-success" onclick="seedQuestions()">添加示例数据</button>
+                <button class="btn btn-primary" onclick="openAddModal()">添加问题</button>
+                <a href="/" class="btn btn-secondary">返回首页</a>
+            </div>
+        </header>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>问题</th>
+                        <th>答案</th>
+                        <th>分类</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="questionsTable">
+                </tbody>
+            </table>
+            <div class="empty-state" id="emptyState" style="display: none;">
+                暂无问题，请点击"添加问题"或"添加示例数据"开始
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="questionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加问题</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="questionForm">
+                <input type="hidden" id="questionId">
+                <div class="form-group">
+                    <label>问题</label>
+                    <input type="text" id="question" required placeholder="请输入问题">
+                </div>
+                <div class="form-group">
+                    <label>答案</label>
+                    <textarea id="answer" required placeholder="请输入答案"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>分类</label>
+                    <input type="text" id="category" placeholder="请输入分类（可选）">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let editingId = null;
+
+        async function loadQuestions() {
+            try {
+                const response = await fetch('/api/questions');
+                const questions = await response.json();
+                const tbody = document.getElementById('questionsTable');
+                const emptyState = document.getElementById('emptyState');
+
+                if (questions.length === 0) {
+                    tbody.innerHTML = '';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                emptyState.style.display = 'none';
+                tbody.innerHTML = questions.map(q => `
+                    <tr>
+                        <td>${escapeHtml(q.question)}</td>
+                        <td>${escapeHtml(q.answer.substring(0, 50))}${q.answer.length > 50 ? '...' : ''}</td>
+                        <td>${q.category ? `<span class="category-tag">${escapeHtml(q.category)}</span>` : '-'}</td>
+                        <td class="actions">
+                            <button class="btn btn-primary btn-sm" onclick="editQuestion(${q.id})">编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">删除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                alert('加载问题失败');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = '添加问题';
+            document.getElementById('questionForm').reset();
+            document.getElementById('questionId').value = '';
+            document.getElementById('questionModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('questionModal').classList.remove('active');
+            editingId = null;
+        }
+
+        async function editQuestion(id) {
+            try {
+                const response = await fetch('/api/questions');
+                const questions = await response.json();
+                const question = questions.find(q => q.id === id);
+
+                if (question) {
+                    editingId = id;
+                    document.getElementById('modalTitle').textContent = '编辑问题';
+                    document.getElementById('questionId').value = id;
+                    document.getElementById('question').value = question.question;
+                    document.getElementById('answer').value = question.answer;
+                    document.getElementById('category').value = question.category || '';
+                    document.getElementById('questionModal').classList.add('active');
+                }
+            } catch (error) {
+                alert('加载问题失败');
+            }
+        }
+
+        async function deleteQuestion(id) {
+            if (!confirm('确定要删除这个问题吗？')) return;
+
+            try {
+                await fetch(`/api/questions/${id}`, { method: 'DELETE' });
+                loadQuestions();
+            } catch (error) {
+                alert('删除失败');
+            }
+        }
+
+        async function seedQuestions() {
+            try {
+                await fetch('/api/seed', { method: 'POST' });
+                loadQuestions();
+                alert('示例数据添加成功！');
+            } catch (error) {
+                alert('添加失败');
+            }
+        }
+
+        document.getElementById('questionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                question: document.getElementById('question').value,
+                answer: document.getElementById('answer').value,
+                category: document.getElementById('category').value
+            };
+
+            try {
+                if (editingId) {
+                    await fetch(`/api/questions/${editingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    await fetch('/api/questions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                }
+                closeModal();
+                loadQuestions();
+            } catch (error) {
+                alert('保存失败');
+            }
+        });
+
+        loadQuestions();
+    </script>
+</body>
+</html>
