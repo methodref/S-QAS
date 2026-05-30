@@ -21,8 +21,29 @@ def admin():
 
 @app.route('/api/questions', methods=['GET'])
 def get_questions():
-    questions = Question.query.order_by(Question.created_at.desc()).all()
-    return jsonify([q.to_dict() for q in questions])
+    page = int(request.args.get('page', 1))
+    page_size = int(request.args.get('page_size', 10))
+    search_query = request.args.get('search', '')
+    
+    query = Question.query.order_by(Question.created_at.desc())
+    
+    if search_query:
+        query = query.filter(
+            (Question.question.ilike(f'%{search_query}%')) |
+            (Question.answer.ilike(f'%{search_query}%')) |
+            (Question.category.ilike(f'%{search_query}%'))
+        )
+    
+    total = query.count()
+    questions = query.offset((page - 1) * page_size).limit(page_size).all()
+    
+    return jsonify({
+        'questions': [q.to_dict() for q in questions],
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': (total + page_size - 1) // page_size
+    })
 
 @app.route('/api/questions', methods=['POST'])
 def add_question():
@@ -151,7 +172,7 @@ def seed_questions():
 
 if __name__ == '__main__':
     print("🚀 启动智能问答系统...")
-    print(f"📡 服务地址: http://localhost:8080")
-    print(f"🔧 管理后台: http://localhost:8080/admin")
+    print(f"📡 服务地址: http://localhost:5001")
+    print(f"🔧 管理后台: http://localhost:5001/admin")
     print(f"✅ 模式: 完全离线")
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=5001)

@@ -80,20 +80,33 @@
         }
         button {
             padding: 15px 30px;
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 10px;
             font-size: 16px;
+            font-weight: 500;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         button:hover {
-            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        button:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
         button:disabled {
-            background: #ccc;
+            background: #9ca3af;
             cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
         }
         .admin-link {
             text-align: center;
