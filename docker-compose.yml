@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  sqa-app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./qa_system.db:/app/qa_system.db
+    environment:
+      - FLASK_ENV=production
+      - PORT=8080
