@@ -89,6 +89,11 @@ def seed_questions():
         {'question': '怎么联系客服', 'answer': '你可以拨打客服热线400-123-4567，或者发送邮件到support@example.com', 'category': '联系'},
         {'question': '你们的工作时间是什么', 'answer': '我们的工作时间是周一至周五9:00-18:00。', 'category': '营业时间'},
         {'question': '如何重置密码', 'answer': '点击登录页面的"忘记密码"链接，输入注册邮箱，我们会发送重置链接给你。', 'category': '账户'},
+        {'question': '忘记密码怎么办', 'answer': '点击登录页面的"忘记密码"链接，输入注册邮箱，我们会发送重置链接给你。', 'category': '账户'},
+        {'question': '注册新账号', 'answer': '点击首页的"注册"按钮，填写邮箱和密码即可完成注册。', 'category': '账户'},
+        {'question': '客服电话是多少', 'answer': '客服热线是400-123-4567，工作时间内都有人接听。', 'category': '联系'},
+        {'question': '能帮我一下吗', 'answer': '当然可以！请告诉我您的问题，我会尽力帮助您。', 'category': '帮助'},
+        {'question': '修改密码步骤', 'answer': '登录后进入个人中心，找到"修改密码"选项，按提示操作即可。', 'category': '账户'},
     ]
 
     for sq in sample_questions:
@@ -105,7 +110,8 @@ def seed_questions():
     return jsonify({'message': '示例数据添加成功'})
 
 if __name__ == '__main__':
-    print("启动智能问答系统...")
-    print(f"服务地址: http://localhost:8080")
-    print(f"管理后台: http://localhost:8080/admin")
+    print("🚀 启动智能问答系统...")
+    print(f"📡 服务地址: http://localhost:8080")
+    print(f"🔧 管理后台: http://localhost:8080/admin")
+    print(f"✅ 模式: 完全离线")
     app.run(debug=True, host='0.0.0.0', port=8080)
