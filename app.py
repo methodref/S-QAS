@@ -1,6 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from models import db, Question
 from similarity import find_best_match
+import pandas as pd
+from io import BytesIO, StringIO
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///qa_system.db'
@@ -24,6 +27,7 @@ def get_questions():
     page = int(request.args.get('page', 1))
     page_size = int(request.args.get('page_size', 10))
     search_query = request.args.get('search', '')
+    category_query = request.args.get('category', '')
     
     query = Question.query.order_by(Question.created_at.desc())
     
@@ -33,6 +37,9 @@ def get_questions():
             (Question.answer.ilike(f'%{search_query}%')) |
             (Question.category.ilike(f'%{search_query}%'))
         )
+    
+    if category_query:
+        query = query.filter(Question.category == category_query)
     
     total = query.count()
     questions = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -48,6 +55,12 @@ def get_questions():
 @app.route('/api/questions', methods=['POST'])
 def add_question():
     data = request.get_json()
+    
+    # 检查问题是否已存在
+    existing = Question.query.filter_by(question=data['question']).first()
+    if existing:
+        return jsonify({'error': '问题已存在'}), 400
+        
     question = Question(
         question=data['question'],
         answer=data['answer'],
@@ -61,6 +74,12 @@ def add_question():
 def update_question(id):
     question = Question.query.get_or_404(id)
     data = request.get_json()
+    
+    # 检查问题是否已存在（排除当前编辑的问题）
+    existing = Question.query.filter_by(question=data['question']).first()
+    if existing and existing.id != id:
+        return jsonify({'error': '问题已存在'}), 400
+        
     question.question = data['question']
     question.answer = data['answer']
     question.category = data.get('category', question.category)
@@ -170,8 +189,152 @@ def seed_questions():
     db.session.commit()
     return jsonify({'message': '示例数据添加成功'})
 
+@app.route('/api/export', methods=['GET'])
+def export_questions():
+    export_format = request.args.get('format', 'json')
+    questions = Question.query.order_by(Question.created_at.desc()).all()
+    data = [{
+        'question': q.question,
+        'answer': q.answer,
+        'category': q.category or ''
+    } for q in questions]
+    
+    if export_format == 'xlsx':
+        df = pd.DataFrame(data)
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Questions')
+        output.seek(0)
+        filename = f'questions_export_{pd.Timestamp.now().strftime("%Y%m%d")}.xlsx'
+        return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                       as_attachment=True, download_name=filename)
+    
+    elif export_format == 'csv':
+        output = BytesIO()
+        df = pd.DataFrame(data)
+        df.to_csv(output, index=False, encoding='utf-8-sig')
+        output.seek(0)
+        filename = f'questions_export_{pd.Timestamp.now().strftime("%Y%m%d")}.csv'
+        return send_file(output, mimetype='text/csv', as_attachment=True, download_name=filename)
+    
+    else:
+        return jsonify({
+            'success': True,
+            'total': len(data),
+            'questions': data
+        })
+
+@app.route('/api/import', methods=['POST'])
+def import_questions():
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        file = request.files.get('file')
+        if not file:
+            return jsonify({'success': False, 'message': '没有上传文件'}), 400
+        
+        filename = file.filename.lower()
+        try:
+            if filename.endswith('.xlsx') or filename.endswith('.xls'):
+                df = pd.read_excel(file)
+            elif filename.endswith('.csv'):
+                df = pd.read_csv(file, encoding='utf-8-sig')
+            else:
+                data = request.get_json()
+                questions = data.get('questions', [])
+                return process_import(questions)
+            
+            questions = df.to_dict('records')
+            return process_import(questions)
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'文件读取失败: {str(e)}'}), 400
+    else:
+        data = request.get_json()
+        questions = data.get('questions', [])
+        return process_import(questions)
+
+def process_import(questions):
+    if not questions:
+        return jsonify({'success': False, 'message': '没有数据需要导入'}), 400
+    
+    imported_count = 0
+    updated_count = 0
+    errors = []
+    
+    for item in questions:
+        if not item.get('question') or not item.get('answer'):
+            errors.append(f"数据缺少必要字段: {item}")
+            continue
+            
+        existing = Question.query.filter_by(question=item['question']).first()
+        
+        if existing:
+            existing.answer = item['answer']
+            existing.category = item.get('category', '')
+            updated_count += 1
+        else:
+            question = Question(
+                question=item['question'],
+                answer=item['answer'],
+                category=item.get('category', '')
+            )
+            db.session.add(question)
+            imported_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'导入完成：新增 {imported_count} 条，更新 {updated_count} 条',
+        'imported': imported_count,
+        'updated': updated_count,
+        'errors': errors
+    })
+
+@app.route('/api/check-duplicates', methods=['POST'])
+def check_duplicates():
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        file = request.files.get('file')
+        if not file:
+            return jsonify({'has_duplicates': False, 'count': 0, 'duplicates': []})
+        
+        filename = file.filename.lower()
+        try:
+            if filename.endswith('.xlsx') or filename.endswith('.xls'):
+                df = pd.read_excel(file)
+            elif filename.endswith('.csv'):
+                df = pd.read_csv(file, encoding='utf-8-sig')
+            else:
+                data = request.get_json()
+                questions = data.get('questions', [])
+                return do_check_duplicates(questions)
+            
+            questions = df.to_dict('records')
+            return do_check_duplicates(questions)
+        except:
+            return jsonify({'has_duplicates': False, 'count': 0, 'duplicates': []})
+    else:
+        data = request.get_json()
+        questions = data.get('questions', [])
+        return do_check_duplicates(questions)
+
+def do_check_duplicates(questions):
+    duplicates = []
+    for item in questions:
+        if item.get('question'):
+            existing = Question.query.filter_by(question=item['question']).first()
+            if existing:
+                duplicates.append({
+                    'question': item['question'],
+                    'existing_id': existing.id
+                })
+    
+    return jsonify({
+        'has_duplicates': len(duplicates) > 0,
+        'count': len(duplicates),
+        'duplicates': duplicates
+    })
+
 if __name__ == '__main__':
-    print("🚀 启动智能问答系统...")
+    print("🚀 启动 S-QAS 智能问答系统...")
     print(f"📡 服务地址: http://localhost:5001")
     print(f"🔧 管理后台: http://localhost:5001/admin")
     print(f"✅ 模式: 完全离线")

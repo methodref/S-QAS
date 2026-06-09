@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>题库管理 - 智能问答系统</title>
+    <title>S-QAS - 题库管理 - 智能问答系统</title>
     <style>
         * {
             margin: 0;
@@ -515,6 +515,30 @@
                 <h1>题库管理</h1>
             </div>
             <div class="header-right">
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn btn-secondary" onclick="toggleExportMenu()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7,10 12,15 17,10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        导出
+                    </button>
+                    <div id="exportMenu" class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px; margin-top: 8px;">
+                        <a href="#" onclick="exportQuestions('json')" style="display: block; padding: 10px 16px; color: var(--gray-700); text-decoration: none; font-size: 14px;">JSON 格式</a>
+                        <a href="#" onclick="exportQuestions('xlsx')" style="display: block; padding: 10px 16px; color: var(--gray-700); text-decoration: none; font-size: 14px;">Excel 格式</a>
+                        <a href="#" onclick="exportQuestions('csv')" style="display: block; padding: 10px 16px; color: var(--gray-700); text-decoration: none; font-size: 14px; border-top: 1px solid var(--gray-200);">CSV 格式</a>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17,8 12,3 7,8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    导入
+                </button>
+                <input type="file" id="importFile" accept=".json,.xlsx,.xls,.csv" style="display: none;" onchange="handleImport(event)">
                 <button class="btn btn-success" onclick="seedQuestions()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 5v14"/>
@@ -541,12 +565,15 @@
 
         <div class="card">
             <div class="card-header">
-                <div class="search-box">
+                <div class="search-box" style="flex: 1;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35"/>
                     </svg>
                     <input type="text" id="searchInput" placeholder="搜索问题..." onkeyup="filterTable()">
+                </div>
+                <div class="category-filter" style="margin-left: 12px;">
+                    <input type="text" id="categoryFilter" placeholder="按分类筛选" onkeyup="filterTable()" style="width: 150px;">
                 </div>
                 <div class="header-actions" id="headerActions" style="display: none;">
                     <span class="batch-count" id="selectedCount">0</span>
@@ -616,20 +643,7 @@
                 </div>
                 <div class="form-group">
                     <label>分类</label>
-                    <select id="category">
-                        <option value="">请选择分类（可选）</option>
-                        <option value="问候">问候</option>
-                        <option value="介绍">介绍</option>
-                        <option value="账户">账户</option>
-                        <option value="帮助">帮助</option>
-                        <option value="营业时间">营业时间</option>
-                        <option value="服务">服务</option>
-                        <option value="使用">使用</option>
-                        <option value="反馈">反馈</option>
-                        <option value="感谢">感谢</option>
-                        <option value="告别">告别</option>
-                        <option value="其他">其他</option>
-                    </select>
+                    <input type="text" id="category" placeholder="请输入分类（可选）">
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
@@ -659,6 +673,29 @@
         </div>
     </div>
 
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>导入确认</h3>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="batch-info" id="importMessage">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 9v2m0 4h.01"/>
+                    <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                </svg>
+                <span id="importInfo">检测到 <span id="duplicateCount">0</span> 个重复问题</span>
+            </div>
+            <p style="margin: 16px 0; color: var(--gray-600); font-size: 14px;">
+                检测到 <strong id="duplicateCount2">0</strong> 个重复问题，继续导入将覆盖已有数据
+            </p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeImportModal()">取消</button>
+                <button type="button" class="btn btn-warning" onclick="confirmImport()">继续覆盖</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let editingId = null;
         let selectedIds = [];
@@ -671,11 +708,15 @@
         async function loadQuestions(page = 1) {
             try {
                 const searchQuery = document.getElementById('searchInput').value;
+                const categoryQuery = document.getElementById('categoryFilter').value;
                 const url = new URL('/api/questions', window.location.origin);
                 url.searchParams.set('page', page);
                 url.searchParams.set('page_size', pageSize);
                 if (searchQuery) {
                     url.searchParams.set('search', searchQuery);
+                }
+                if (categoryQuery) {
+                    url.searchParams.set('category', categoryQuery);
                 }
                 
                 const response = await fetch(url);
@@ -873,7 +914,7 @@
             const toast = document.createElement('div');
             toast.style.cssText = `
                 position: fixed;
-                bottom: 24px;
+                top: 24px;
                 right: 24px;
                 padding: 14px 20px;
                 border-radius: 10px;
@@ -896,12 +937,12 @@
         const style = document.createElement('style');
         style.textContent = `
             @keyframes slideIn {
-                from { transform: translateX(100px); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
+                from { transform: translateY(-100px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
             }
             @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100px); opacity: 0; }
+                from { transform: translateY(0); opacity: 1; }
+                to { transform: translateY(-100px); opacity: 0; }
             }
         `;
         document.head.appendChild(style);
@@ -916,29 +957,143 @@
             };
 
             try {
+                let response;
                 if (editingId) {
-                    await fetch(`/api/questions/${editingId}`, {
+                    response = await fetch(`/api/questions/${editingId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
-                    showToast('修改成功', 'success');
                 } else {
-                    await fetch('/api/questions', {
+                    response = await fetch('/api/questions', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
-                    showToast('添加成功', 'success');
                 }
-                closeModal();
-                loadQuestions(currentPage);
+                
+                if (response.ok) {
+                    showToast(editingId ? '修改成功' : '添加成功', 'success');
+                    closeModal();
+                    loadQuestions(currentPage);
+                } else {
+                    const result = await response.json();
+                    showToast(result.error || '保存失败', 'error');
+                }
             } catch (error) {
                 showToast('保存失败', 'error');
             }
         });
 
         loadQuestions(1);
+
+        let pendingImportData = null;
+
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            event.stopPropagation();
+        }
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('exportMenu');
+            if (menu && menu.style.display === 'block' && !menu.contains(event.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        function exportQuestions(format = 'json') {
+            document.getElementById('exportMenu').style.display = 'none';
+            
+            if (format === 'json') {
+                fetch('/api/export?format=json')
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            const dataStr = JSON.stringify(result, null, 2);
+                            const blob = new Blob([dataStr], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `questions_export_${new Date().toISOString().slice(0,10)}.json`;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                            showToast(`成功导出 ${result.total} 条问题`, 'success');
+                        }
+                    })
+                    .catch(() => {
+                        showToast('导出失败', 'error');
+                    });
+            } else {
+                window.location.href = `/api/export?format=${format}`;
+                showToast('正在导出...', 'success');
+            }
+        }
+
+        async function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/check-duplicates', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.has_duplicates) {
+                    pendingImportData = formData;
+                    document.getElementById('duplicateCount').textContent = result.count;
+                    document.getElementById('duplicateCount2').textContent = result.count;
+                    document.getElementById('importModal').classList.add('active');
+                } else {
+                    await doImport(formData);
+                }
+                
+                event.target.value = '';
+            } catch (error) {
+                showToast('导入失败：文件格式错误', 'error');
+                event.target.value = '';
+            }
+        }
+
+        async function doImport(formDataOrData) {
+            try {
+                const response = await fetch('/api/import', {
+                    method: 'POST',
+                    body: formDataOrData instanceof FormData ? formDataOrData : JSON.stringify(formDataOrData),
+                    headers: formDataOrData instanceof FormData ? {} : { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    loadQuestions(1);
+                } else {
+                    showToast(result.message || '导入失败', 'error');
+                }
+            } catch (error) {
+                showToast('导入失败', 'error');
+            }
+        }
+
+        function confirmImport() {
+            if (pendingImportData) {
+                doImport(pendingImportData);
+                closeImportModal();
+                pendingImportData = null;
+            }
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('active');
+            pendingImportData = null;
+        }
     </script>
 </body>
 </html>

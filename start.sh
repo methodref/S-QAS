@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 启动脚本 - 使用 Gunicorn 运行智能问答系统
 
-APP_NAME="智能问答系统"
+APP_NAME="S-QAS 智能问答系统"
 APP_MODULE="app:app"
 HOST="0.0.0.0"
 PORT="8080"

@@ -4,7 +4,7 @@ db = SQLAlchemy()
 
 class Question(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    question = db.Column(db.String(500), nullable=False)
+    question = db.Column(db.String(500), nullable=False, unique=True)
     answer = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=db.func.now())
